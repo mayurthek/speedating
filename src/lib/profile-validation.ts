@@ -32,9 +32,7 @@ export const ProfileSchema = z.object({
   gender: z.enum(['Man', 'Woman', 'Other'], {
     error: 'Please select a gender presentation',
   }),
-  avatarType: z.enum(['Man', 'Woman', 'Other'], {
-    error: 'Please select an avatar',
-  }),
+  avatarType: z.enum(['Man', 'Woman', 'Other']).optional(),
   interestedIn: z.enum(['Men', 'Women', 'Everyone'], {
     error: 'Please select who you are interested in meeting',
   }),
@@ -76,8 +74,8 @@ export function checkProfileCompletion(data: {
   if (!data.gender) {
     missingFields.push('Gender');
   }
-  // Avatar selection is only required if gender is not 'Other'
-  if (data.gender !== 'Other' && !data.avatarType) {
+  // Avatar is automatically assigned from gender; only missing if neither avatarType nor gender is provided
+  if (!data.avatarType && !data.gender) {
     missingFields.push('Avatar');
   }
   if (!data.interestedIn) {

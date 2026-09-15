@@ -10,7 +10,7 @@ interface ProfileFormProps {
     firstName?: string;
     dateOfBirth?: string;
     gender?: 'Man' | 'Woman' | string;
-    avatarType?: 'Man' | 'Woman';
+    avatarType?: 'Man' | 'Woman' | 'Other';
     interestedIn?: 'Men' | 'Women' | 'Everyone';
     bio?: string;
     interests?: string[];
@@ -24,6 +24,12 @@ const COMMON_INTERESTS = [
   'Photography', 'Tech', 'Cycling', 'Gaming', 'Writing'
 ];
 
+function getAvatarForGender(g: string): 'Man' | 'Woman' | 'Other' {
+  if (g === 'Woman') return 'Woman';
+  if (g === 'Other') return 'Other';
+  return 'Man';
+}
+
 export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProps) {
   const router = useRouter();
 
@@ -32,7 +38,9 @@ export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProp
     initialData?.dateOfBirth ? initialData.dateOfBirth.substring(0, 10) : ''
   );
   const [gender, setGender] = useState<'Man' | 'Woman' | string>(initialData?.gender || 'Man');
-  const [avatarType, setAvatarType] = useState<'Man' | 'Woman' | 'Other'>(initialData?.avatarType || 'Man');
+  const [avatarType, setAvatarType] = useState<'Man' | 'Woman' | 'Other'>(
+    initialData?.avatarType || getAvatarForGender(initialData?.gender || 'Man')
+  );
   const [interestedIn, setInterestedIn] = useState<'Men' | 'Women' | 'Everyone'>(
     initialData?.interestedIn || 'Everyone'
   );
@@ -47,14 +55,10 @@ export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProp
   const calculatedAge = dateOfBirth ? calculateAge(dateOfBirth) : null;
   const isUnderAge = calculatedAge !== null && calculatedAge < 18;
 
-  // Auto-sync avatarType when gender changes
+  // Automatically assign avatar when gender changes
   const handleGenderChange = (selected: string) => {
     setGender(selected);
-    if (selected === 'Man' || selected === 'Woman') {
-      setAvatarType(selected);
-    } else if (selected === 'Other') {
-      setAvatarType('Other');
-    }
+    setAvatarType(getAvatarForGender(selected));
   };
 
   const toggleInterest = (interest: string) => {
@@ -220,74 +224,47 @@ export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProp
         </p>
       </div>
 
-      {/* Gender Presentation */}
+      {/* Gender Selection with Automatic Avatar Assignment */}
       <div>
         <label className="type-controls" style={{ display: 'block', marginBottom: '8px' }}>
           Gender <span style={{ color: 'var(--text-muted)' }}>*</span>
         </label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-          {(['Man', 'Woman', 'Other'] as const).map((g) => (
-            <button
-              key={g}
-              type="button"
-              onClick={() => handleGenderChange(g)}
-              className="btn"
-              style={{
-                backgroundColor: gender === g ? 'var(--action-primary)' : 'var(--surface-primary)',
-                color: gender === g ? 'var(--action-primary-text)' : 'var(--text-primary)',
-                borderColor: gender === g ? 'var(--action-primary)' : 'var(--border-subtle)',
-              }}
-            >
-              {g}
-            </button>
-          ))}
+        <p className="type-meta" style={{ marginBottom: '12px' }}>
+          Speedating does not use profile photos. Selecting your option automatically assigns your avatar marker.
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          {(['Man', 'Woman', 'Other'] as const).map((g) => {
+            const isSelected = gender === g;
+            return (
+              <button
+                key={g}
+                type="button"
+                onClick={() => handleGenderChange(g)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '16px 10px',
+                  border: isSelected ? '2px solid var(--border-strong)' : '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: isSelected ? 'var(--surface-soft)' : 'var(--surface-primary)',
+                  cursor: 'pointer',
+                  transition: 'border var(--transition-fast), background-color var(--transition-fast)',
+                }}
+              >
+                <Avatar type={g} size={44} />
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-primary)' }}>{g}</div>
+                  <div className="type-meta" style={{ fontSize: '11px', marginTop: '2px' }}>
+                    {isSelected ? 'Selected' : 'Select'}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
-
-      {/* Generated Avatar Selection - disappears when gender is Other */}
-      {gender !== 'Other' && (
-        <div>
-          <label className="type-controls" style={{ display: 'block', marginBottom: '8px' }}>
-            Generated Avatar <span style={{ color: 'var(--text-muted)' }}>*</span>
-          </label>
-          <p className="type-meta" style={{ marginBottom: '12px' }}>
-            Speedating does not use profile photos. Choose your minimalist avatar marker.
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            {(['Man', 'Woman'] as const).map((type) => {
-              const isSelected = avatarType === type;
-              return (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => setAvatarType(type)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '14px',
-                    padding: '12px 16px',
-                    border: isSelected ? '2px solid var(--border-strong)' : '1px solid var(--border-subtle)',
-                    borderRadius: 'var(--radius-sm)',
-                    backgroundColor: isSelected ? 'var(--surface-soft)' : 'var(--surface-primary)',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                    transition: 'border var(--transition-fast), background-color var(--transition-fast)',
-                  }}
-                >
-                  <Avatar type={type} size={44} />
-                  <div>
-                    <div style={{ fontSize: '14px', fontWeight: 600 }}>{type} Avatar</div>
-                    <div className="type-meta" style={{ fontSize: '11px' }}>
-                      {isSelected ? 'Selected' : 'Click to select'}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Dating Preference */}
       <div>

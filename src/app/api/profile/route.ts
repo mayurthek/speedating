@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     }
 
     const { firstName, dateOfBirth, gender, avatarType, interestedIn, bio, interests } = parsed.data;
+    const effectiveAvatarType = avatarType || (gender === 'Woman' ? 'Woman' : gender === 'Other' ? 'Other' : 'Man');
 
     // Upsert Profile
     const existingProfile = await db.queryOne<ProfileRecord>(
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
          SET first_name = $1, date_of_birth = $2, gender = $3, avatar_type = $4, bio = $5, interests = $6::jsonb, updated_at = CURRENT_TIMESTAMP
          WHERE user_id = $7
          RETURNING *`,
-        [firstName, dateOfBirth, gender, avatarType, bio || null, JSON.stringify(interests || []), user.id]
+        [firstName, dateOfBirth, gender, effectiveAvatarType, bio || null, JSON.stringify(interests || []), user.id]
       );
       profile = updated[0];
     } else {
@@ -82,7 +83,7 @@ export async function POST(req: Request) {
         `INSERT INTO profiles (user_id, first_name, date_of_birth, gender, avatar_type, bio, interests)
          VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
          RETURNING *`,
-        [user.id, firstName, dateOfBirth, gender, avatarType, bio || null, JSON.stringify(interests || [])]
+        [user.id, firstName, dateOfBirth, gender, effectiveAvatarType, bio || null, JSON.stringify(interests || [])]
       );
       profile = inserted[0];
     }

@@ -10,7 +10,7 @@ interface InitialProfileData {
   firstName?: string;
   dateOfBirth?: string;
   gender?: 'Man' | 'Woman' | string;
-  avatarType?: 'Man' | 'Woman';
+  avatarType?: 'Man' | 'Woman' | 'Other';
   interestedIn?: 'Men' | 'Women' | 'Everyone';
   bio?: string;
   interests?: string[];
