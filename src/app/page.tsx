@@ -8,6 +8,15 @@ import { AuthGateModal } from '@/components/AuthGateModal';
 import { Avatar } from '@/components/Avatar';
 import { ProfileRecord, PreferenceRecord, UserRecord } from '@/lib/db';
 
+const HOW_IT_WORKS = [
+  'Create a free account and add a few interests.',
+  'Tap Video and we pair you with someone new.',
+  'Both of you get 3 minutes and the same question.',
+  'Keep talking, or skip to the next person.',
+];
+
+const SAMPLE_INTERESTS = ['Music', 'Travel', 'Food', 'Gaming', 'Art', 'Running'];
+
 export default function HomePage() {
   const router = useRouter();
   const [user, setUser] = useState<UserRecord | null>(null);
@@ -16,17 +25,18 @@ export default function HomePage() {
   const [profileComplete, setProfileComplete] = useState(false);
 
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [phaseModalOpen, setPhaseModalOpen] = useState(false);
 
   useEffect(() => {
+    let active = true;
     async function checkAuth() {
       try {
         const res = await fetch('/api/auth/me');
         if (!res.ok) {
-          setUser(null);
+          if (active) setUser(null);
           return;
         }
         const data = await res.json();
+        if (!active) return;
         if (data.authenticated) {
           setUser(data.user);
           setProfile(data.profile);
@@ -40,6 +50,9 @@ export default function HomePage() {
       }
     }
     checkAuth();
+    return () => {
+      active = false;
+    };
   }, []);
 
   const handleVideoClick = () => {
@@ -47,15 +60,14 @@ export default function HomePage() {
       setAuthModalOpen(true);
       return;
     }
-
     if (!profileComplete) {
       router.push('/profile/create');
       return;
     }
-
-    // In Phase 2: Enter speed dating queue
     router.push('/speed-dating/waiting');
   };
+
+  const interests = profile?.interests?.filter(Boolean) ?? [];
 
   return (
     <div className="app-container">
@@ -72,179 +84,188 @@ export default function HomePage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          textAlign: 'center',
-          padding: '30px 10px',
+          paddingTop: 28,
+          paddingBottom: 40,
         }}
       >
-        <div style={{ marginBottom: '32px' }}>
-          <h1 className="type-wordmark" style={{ marginBottom: '12px' }}>
-            Speedating
-          </h1>
-          <p
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '18px',
-              color: 'var(--text-secondary)',
-              letterSpacing: '-0.01em',
-            }}
+        {/* Primary card */}
+        <div
+          className="panel"
+          style={{
+            width: '100%',
+            maxWidth: 460,
+            textAlign: 'center',
+            padding: '30px 26px 26px',
+            borderRadius: 12,
+            boxShadow: 'var(--shadow-md)',
+          }}
+        >
+          <h1
+            className="type-heading"
+            style={{ marginBottom: 10, color: 'var(--text-primary)' }}
           >
-            {user ? 'ready when you are' : 'meet someone new, briefly'}
-          </p>
-        </div>
+            Meet someone new, in three minutes
+          </h1>
 
-        {/* Primary Video Button per PRD Section 11A */}
-        <div style={{ marginBottom: '32px' }}>
+          <p
+            className="type-body"
+            style={{ fontSize: 15, color: 'var(--text-secondary)', marginBottom: 22 }}
+          >
+            Speedating pairs you one-to-one over video. You both get the same question and
+            three minutes on the clock — then you decide whether to keep talking.
+          </p>
+
+          {/* Interests */}
+          <div style={{ marginBottom: 24 }}>
+            <div className="type-meta" style={{ marginBottom: 10, letterSpacing: '0.03em' }}>
+              {interests.length > 0 ? 'YOUR INTERESTS' : 'INTERESTS HELP US MATCH YOU'}
+            </div>
+            <div className="tag-row" style={{ justifyContent: 'center' }}>
+              {(interests.length > 0 ? interests : SAMPLE_INTERESTS).slice(0, 6).map((tag) => (
+                <span key={tag} className="tag">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="type-section" style={{ fontSize: 16, marginBottom: 12, fontWeight: 600 }}>
+            Start chatting:
+          </div>
+
           <button
             id="start-video-btn"
             onClick={handleVideoClick}
-            className="btn btn-primary btn-large"
-            style={{
-              minWidth: '220px',
-              height: '60px',
-              fontSize: '20px',
-              fontFamily: 'var(--font-display)',
-              fontWeight: 700,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-            }}
+            className="btn btn-primary btn-large btn-block"
+            style={{ fontSize: 18, padding: '15px 20px', borderRadius: 6 }}
           >
-            [ Video ]
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="2" y="6" width="13" height="12" rx="2.5" fill="currentColor" />
+              <path
+                d="M17 10.5L21.5 7.2C22 6.85 22.7 7.2 22.7 7.8V16.2C22.7 16.8 22 17.15 21.5 16.8L17 13.5"
+                fill="currentColor"
+              />
+            </svg>
+            Video
           </button>
+
+          <p className="type-meta" style={{ marginTop: 14, fontSize: 12 }}>
+            Leave anytime · report anything
+          </p>
         </div>
 
-        {/* Authenticated State Details */}
-        {user ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '16px',
-              width: '100%',
-              maxWidth: '420px',
-            }}
-          >
+        {/* Account status */}
+        {user && (
+          <div style={{ width: '100%', maxWidth: 460, marginTop: 18 }}>
             {profileComplete && profile ? (
               <div
                 className="panel-soft"
                 style={{
-                  width: '100%',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  padding: '14px 18px',
+                  gap: 12,
+                  padding: '14px 16px',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Avatar type={profile.avatar_type || profile.gender} size={42} />
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontWeight: 600, fontSize: '15px' }}>{profile.first_name}</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+                  <Avatar type={profile.avatar_type || profile.gender} size={40} />
+                  <div style={{ textAlign: 'left', minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>{profile.first_name}</div>
                     <div className="type-meta">
-                      Looking for: {preference?.interested_in || 'Everyone'}
+                      Looking for {preference?.interested_in?.toLowerCase() || 'everyone'}
                     </div>
                   </div>
                 </div>
-
-                <Link href="/profile" className="btn btn-subtle" style={{ fontSize: '13px' }}>
-                  View profile
+                <Link href="/profile" className="btn btn-outline" style={{ fontSize: 13, padding: '8px 14px' }}>
+                  View
                 </Link>
               </div>
             ) : (
               <div
                 className="panel"
                 style={{
-                  width: '100%',
-                  borderColor: 'var(--border-strong)',
-                  backgroundColor: 'var(--surface-primary)',
-                  padding: '16px',
+                  padding: 16,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  textAlign: 'center',
+                  gap: 12,
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: '14px', marginBottom: '4px' }}>
-                  Profile incomplete
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>Finish your profile</div>
+                  <p className="type-meta" style={{ fontSize: 13 }}>
+                    Add your name, birthday and interests so we can start matching you.
+                  </p>
                 </div>
-                <p className="type-meta" style={{ marginBottom: '12px' }}>
-                  Complete your profile before starting speed dating.
-                </p>
-                <Link
-                  href="/profile/create"
-                  className="btn btn-primary"
-                  style={{ width: '100%', fontSize: '14px', padding: '10px' }}
-                >
-                  [ Complete Profile ]
+                <Link href="/profile/create" className="btn btn-primary btn-block" style={{ fontSize: 14 }}>
+                  Complete profile
                 </Link>
               </div>
             )}
           </div>
-        ) : (
-          <div className="type-meta" style={{ letterSpacing: '0.04em' }}>
-            18+ · leave anytime · report anything
-          </div>
         )}
+
+        {/* How it works */}
+        <div
+          className="panel"
+          style={{ width: '100%', maxWidth: 460, marginTop: 18, textAlign: 'left' }}
+        >
+          <h2 className="type-section" style={{ marginBottom: 14 }}>
+            How it works
+          </h2>
+          <ol style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingLeft: 20, margin: 0 }}>
+            {HOW_IT_WORKS.map((step, i) => (
+              <li key={i} style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                {step}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* 18+ notice */}
+        <div
+          style={{
+            width: '100%',
+            maxWidth: 460,
+            marginTop: 18,
+            padding: '18px 20px',
+            borderRadius: 6,
+            backgroundColor: 'var(--accent-soft)',
+            color: 'var(--accent-soft-text)',
+            fontSize: 12,
+            lineHeight: 1.6,
+          }}
+        >
+          <strong style={{ display: 'block', marginBottom: 4, fontSize: 13 }}>
+            You must be 18 or older to use Speedating.
+          </strong>
+          We are a moderated community for adults. Harassment, nudity and explicit content are
+          not allowed, and anyone can be reported at any time.
+        </div>
       </main>
 
-      {/* Footer info */}
       <footer
         style={{
-          paddingTop: '20px',
-          borderTop: '1px solid var(--border-subtle)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: '12px',
+          gap: 12,
+          fontSize: 12,
           color: 'var(--text-muted)',
+          borderTop: '1px solid var(--border-subtle)',
         }}
       >
-        <div>Speedating © {new Date().getFullYear()}</div>
-        <div style={{ display: 'flex', gap: '16px' }}>
+        <span>© {new Date().getFullYear()} Speedating</span>
+        <div style={{ display: 'flex', gap: 16 }}>
           <Link href="/safety" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
-            Safety & Rules
+            Safety &amp; Rules
           </Link>
         </div>
       </footer>
 
-      {/* Auth Gate Modal */}
       <AuthGateModal isOpen={authModalOpen} onClose={() => setAuthModalOpen(false)} />
-
-      {/* Phase 1 Completion Informational Modal */}
-      {phaseModalOpen && (
-        <div
-          className="modal-backdrop"
-          role="dialog"
-          onClick={() => setPhaseModalOpen(false)}
-        >
-          <div className="modal-dialog" onClick={(e) => e.stopPropagation()}>
-            <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-              <div
-                style={{
-                  display: 'inline-block',
-                  padding: '4px 8px',
-                  backgroundColor: 'var(--surface-soft)',
-                  border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '11px',
-                  fontFamily: 'var(--font-mono)',
-                  marginBottom: '10px',
-                }}
-              >
-                PHASE 1 COMPLETE
-              </div>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', marginBottom: '8px' }}>
-                Profile Verified & Ready
-              </h3>
-              <p className="type-meta" style={{ fontSize: '13px', lineHeight: 1.5 }}>
-                Your account and profile are fully setup and validated. The live queue and matchmaking system will be unlocked in <strong>Phase 2</strong> according to the PRD specification.
-              </p>
-            </div>
-
-            <button
-              onClick={() => setPhaseModalOpen(false)}
-              className="btn btn-primary"
-              style={{ width: '100%', padding: '10px' }}
-            >
-              Got it
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

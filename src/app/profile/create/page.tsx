@@ -77,18 +77,10 @@ export default function ProfileCreatePage() {
       <main style={{ maxWidth: '520px', margin: '0 auto', width: '100%', paddingBottom: '40px' }}>
         <div className="panel">
           <div style={{ marginBottom: '24px' }}>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                textTransform: 'uppercase',
-                letterSpacing: '0.05em',
-                color: 'var(--text-muted)',
-              }}
-            >
-              Step 1 of 1 · Mandatory Setup
+            <span className="badge" style={{ marginBottom: 10 }}>
+              Step 1 of 1 · Required
             </span>
-            <h1 className="type-heading" style={{ marginTop: '4px', marginBottom: '8px' }}>
+            <h1 className="type-heading" style={{ marginBottom: '8px' }}>
               Create your profile
             </h1>
             <p className="type-body" style={{ fontSize: '14px', color: 'var(--text-secondary)' }}>

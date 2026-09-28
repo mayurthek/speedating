@@ -21,8 +21,15 @@ export function Header({ isAuthenticated = false, userEmail, onOpenAuth }: Heade
         setMenuOpen(false);
       }
     }
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMenuOpen(false);
+    }
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -33,145 +40,64 @@ export function Header({ isAuthenticated = false, userEmail, onOpenAuth }: Heade
   };
 
   return (
-    <header
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingBottom: '24px',
-        borderBottom: '1px solid var(--border-subtle)',
-        marginBottom: '40px',
-      }}
-    >
-      <Link
-        href="/"
-        style={{
-          textDecoration: 'none',
-          color: 'var(--text-primary)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-        }}
-      >
-        <span
-          style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '18px',
-            fontWeight: 700,
-            letterSpacing: '0.04em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Speedating
-        </span>
-        <span className="ambient-dot" />
-      </Link>
+    <header className="app-header">
+      <div className="app-header__inner">
+        <Link href="/" className="brand" aria-label="Speedating home">
+          <span className="brand__mark" aria-hidden="true">
+            S
+          </span>
+          <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
+            <span>Speedating</span>
+            <span className="brand__sub">3-minute video dates</span>
+          </span>
+        </Link>
 
-      <div style={{ position: 'relative' }} ref={menuRef}>
-        {isAuthenticated ? (
-          <div>
+        <div style={{ position: 'relative' }} ref={menuRef}>
+          {isAuthenticated ? (
             <button
-              onClick={() => setMenuOpen(!menuOpen)}
+              onClick={() => setMenuOpen((v) => !v)}
               className="btn btn-subtle type-controls"
-              aria-haspopup="true"
+              aria-haspopup="menu"
               aria-expanded={menuOpen}
-              style={{ padding: '6px 12px' }}
+              style={{ padding: '7px 10px', gap: '8px' }}
             >
-              Profile / Settings ▾
+              <span className="status-dot" aria-hidden="true" />
+              <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userEmail || 'My account'}
+              </span>
+              <span aria-hidden="true" style={{ opacity: 0.6, fontSize: 10 }}>
+                ▾
+              </span>
             </button>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Link href="/login" className="btn btn-subtle type-controls">
+                Log in
+              </Link>
+              <button onClick={onOpenAuth} className="btn btn-primary" style={{ fontSize: 14, padding: '9px 16px' }}>
+                Sign up
+              </button>
+            </div>
+          )}
 
-            {menuOpen && (
-              <div
-                role="menu"
-                style={{
-                  position: 'absolute',
-                  right: 0,
-                  top: '100%',
-                  marginTop: '6px',
-                  backgroundColor: 'var(--surface-primary)',
-                  border: '1px solid var(--border-strong)',
-                  borderRadius: 'var(--radius-sm)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.06)',
-                  minWidth: '160px',
-                  zIndex: 50,
-                  display: 'flex',
-                  flexDirection: 'column',
-                }}
-              >
-                {userEmail && (
-                  <div
-                    style={{
-                      padding: '10px 14px',
-                      borderBottom: '1px solid var(--border-subtle)',
-                      fontSize: '12px',
-                      color: 'var(--text-muted)',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {userEmail}
-                  </div>
-                )}
-                <Link
-                  href="/profile"
-                  role="menuitem"
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    color: 'var(--text-primary)',
-                    borderBottom: '1px solid var(--border-subtle)',
-                  }}
-                  className="btn-subtle"
-                >
-                  Profile
-                </Link>
-                <Link
-                  href="/settings"
-                  role="menuitem"
-                  onClick={() => setMenuOpen(false)}
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    textDecoration: 'none',
-                    color: 'var(--text-primary)',
-                    borderBottom: '1px solid var(--border-subtle)',
-                  }}
-                  className="btn-subtle"
-                >
-                  Settings
-                </Link>
-                <button
-                  role="menuitem"
-                  onClick={handleSignOut}
-                  style={{
-                    padding: '10px 14px',
-                    fontSize: '14px',
-                    textAlign: 'left',
-                    width: '100%',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    color: 'var(--action-destructive)',
-                  }}
-                  className="btn-subtle"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
-        ) : (
-          <button
-            onClick={onOpenAuth}
-            className="btn btn-subtle type-controls"
-            style={{ padding: '6px 12px' }}
-          >
-            Log in
-          </button>
-        )}
+          {isAuthenticated && menuOpen && (
+            <div className="menu" role="menu">
+              {userEmail && <div className="menu__header">{userEmail}</div>}
+              <Link href="/profile" role="menuitem" onClick={() => setMenuOpen(false)} className="menu__item">
+                My profile
+              </Link>
+              <Link href="/settings" role="menuitem" onClick={() => setMenuOpen(false)} className="menu__item">
+                Settings
+              </Link>
+              <Link href="/safety" role="menuitem" onClick={() => setMenuOpen(false)} className="menu__item">
+                Safety &amp; rules
+              </Link>
+              <button role="menuitem" onClick={handleSignOut} className="menu__item menu__item--danger">
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

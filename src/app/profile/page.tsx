@@ -112,18 +112,9 @@ export default function ProfileViewPage() {
           {profile.interests && profile.interests.length > 0 && (
             <div>
               <div className="type-meta" style={{ marginBottom: '8px' }}>Interests</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              <div className="tag-row">
                 {profile.interests.map((interest: string) => (
-                  <span
-                    key={interest}
-                    style={{
-                      backgroundColor: 'var(--surface-soft)',
-                      border: '1px solid var(--border-subtle)',
-                      padding: '4px 10px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '13px',
-                    }}
-                  >
+                  <span key={interest} className="tag">
                     {interest}
                   </span>
                 ))}

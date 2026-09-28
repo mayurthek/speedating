@@ -8,6 +8,7 @@ export default function WaitingQueuePage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [seconds, setSeconds] = useState(0);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   useEffect(() => {
@@ -15,7 +16,6 @@ export default function WaitingQueuePage() {
 
     async function initQueue() {
       try {
-        // First check session and join queue
         const joinRes = await fetch('/api/queue/join', { method: 'POST' });
         if (!joinRes.ok) {
           const errData = await joinRes.json().catch(() => ({}));
@@ -23,20 +23,18 @@ export default function WaitingQueuePage() {
             router.push('/');
             return;
           }
-          setError(errData.error || 'Unable to join queue. Ensure your profile is complete.');
+          setError(errData.error || 'Unable to join the queue. Make sure your profile is complete.');
           return;
         }
 
         const joinData = await joinRes.json();
         if (!isSubscribed) return;
 
-        // If matched immediately on join
         if (joinData.status === 'MATCHED' && joinData.sessionId) {
           router.push(`/speed-dating/session/${joinData.sessionId}`);
           return;
         }
 
-        // Subscribe to real-time Server-Sent Events
         const es = new EventSource('/api/queue/events');
         eventSourceRef.current = es;
 
@@ -57,7 +55,6 @@ export default function WaitingQueuePage() {
         };
 
         es.onerror = () => {
-          // Fallback to polling if SSE encounters reconnect
           fetch('/api/queue/status')
             .then((r) => r.json())
             .then((statusData) => {
@@ -70,8 +67,7 @@ export default function WaitingQueuePage() {
         };
       } catch (err: unknown) {
         if (!isSubscribed) return;
-        const msg = err instanceof Error ? err.message : 'Connection error';
-        setError(msg);
+        setError(err instanceof Error ? err.message : 'Connection error');
       }
     }
 
@@ -84,6 +80,11 @@ export default function WaitingQueuePage() {
       }
     };
   }, [router]);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const handleCancel = async () => {
     setCancelling(true);
@@ -102,7 +103,7 @@ export default function WaitingQueuePage() {
 
   return (
     <div className="app-container">
-      <Header isAuthenticated={true} />
+      <Header isAuthenticated />
 
       <main
         style={{
@@ -111,86 +112,86 @@ export default function WaitingQueuePage() {
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          textAlign: 'center',
-          padding: '40px 10px',
+          paddingTop: 30,
+          paddingBottom: 40,
         }}
       >
-        <div style={{ maxWidth: '440px', width: '100%' }}>
-          <h1 className="type-heading" style={{ marginBottom: '12px' }}>
-            Finding someone...
-          </h1>
-
-          <p
-            className="type-body"
-            style={{
-              color: 'var(--text-secondary)',
-              fontSize: '16px',
-              marginBottom: '36px',
-              lineHeight: 1.5,
-            }}
-          >
-            We&apos;re looking for someone who matches your preferences.
-          </p>
-
-          {/* PRD Section 18: Restrained 1-1.4s pulsing connection mark */}
+        <div className="panel" style={{ width: '100%', maxWidth: 420, textAlign: 'center', padding: 30 }}>
           <div
             style={{
+              position: 'relative',
+              width: 128,
+              height: 128,
+              margin: '0 auto 22px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '10px',
-              marginBottom: '48px',
-              height: '32px',
             }}
           >
-            <span
-              className="pulse-mark"
+            {/* Pulsing rings */}
+            {[0, 0.6, 1.2].map((delay) => (
+              <span
+                key={delay}
+                className="pulse-mark"
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  border: '2px solid var(--action-primary)',
+                  opacity: 0,
+                  animationDelay: `${delay}s`,
+                }}
+              />
+            ))}
+            <div
               style={{
-                display: 'inline-block',
-                width: '12px',
-                height: '12px',
-                backgroundColor: 'var(--text-primary)',
+                position: 'relative',
+                width: 76,
+                height: 76,
                 borderRadius: '50%',
+                background: 'var(--brand-gradient)',
+                backgroundColor: 'var(--action-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                boxShadow: 'var(--shadow-md)',
               }}
-            />
-            <span
-              className="pulse-mark"
-              style={{
-                display: 'inline-block',
-                width: '12px',
-                height: '12px',
-                backgroundColor: 'var(--text-primary)',
-                borderRadius: '50%',
-                animationDelay: '0.6s',
-              }}
-            />
+            >
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <rect x="2" y="6" width="13" height="12" rx="2.5" fill="currentColor" />
+                <path
+                  d="M17 10.5L21.5 7.2C22 6.85 22.7 7.2 22.7 7.8V16.2C22.7 16.8 22 17.15 21.5 16.8L17 13.5"
+                  fill="currentColor"
+                />
+              </svg>
+            </div>
+          </div>
+
+          <h1 className="type-heading" style={{ fontSize: 23, marginBottom: 8 }}>
+            Finding someone for you
+          </h1>
+          <p className="type-body" style={{ fontSize: 15, marginBottom: 20 }}>
+            Matching you on your interests. This usually takes a few seconds.
+          </p>
+
+          <div className="type-meta" style={{ marginBottom: 22, fontVariantNumeric: 'tabular-nums' }}>
+            {seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${seconds % 60}s`} searching
           </div>
 
           {error && (
-            <div
-              style={{
-                padding: '12px',
-                backgroundColor: 'var(--surface-soft)',
-                border: '1px solid var(--border-strong)',
-                fontSize: '14px',
-                marginBottom: '24px',
-                textAlign: 'center',
-              }}
-            >
+            <div className="form-error" style={{ marginBottom: 20, textAlign: 'left' }}>
               {error}
             </div>
           )}
 
-          <div>
-            <button
-              onClick={handleCancel}
-              disabled={cancelling}
-              className="btn btn-outline"
-              style={{ minWidth: '160px', padding: '10px 24px' }}
-            >
-              {cancelling ? 'Leaving...' : '[ Cancel ]'}
-            </button>
-          </div>
+          <button
+            onClick={handleCancel}
+            disabled={cancelling}
+            className="btn btn-outline btn-block"
+          >
+            {cancelling ? 'Leaving…' : 'Stop searching'}
+          </button>
         </div>
       </main>
     </div>
