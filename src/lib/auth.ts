@@ -1,6 +1,8 @@
 import { cookies } from 'next/headers';
 import crypto from 'crypto';
-import { db, UserRecord } from './db';
+import { db, UserRecord, ProfileRecord, PreferenceRecord } from './db';
+import { fakeVerifyDelay } from './password';
+import { checkProfileCompletion } from './profile-validation';
 
 const SESSION_COOKIE = 'speedating_session';
 const INTENT_COOKIE = 'speedating_intent';
@@ -89,21 +91,91 @@ export async function clearSession() {
   cookieStore.delete(INTENT_COOKIE);
 }
 
-export async function getOrCreateUser(email: string): Promise<UserRecord> {
-  const normalizedEmail = email.toLowerCase().trim();
-  let user = await db.queryOne<UserRecord>(
-    'SELECT id, email, status, created_at, updated_at FROM users WHERE email = $1',
-    [normalizedEmail]
+const USER_COLUMNS = 'id, email, status, created_at, updated_at';
+
+export interface AuthPayload {
+  user: { id: string; email: string; status: UserRecord['status'] };
+  profile: ProfileRecord | null;
+  preference: PreferenceRecord | null;
+  profileComplete: boolean;
+  missingFields: string[];
+}
+
+/** Shared response body for both login and register so clients can branch identically. */
+export async function getAuthPayload(user: UserRecord): Promise<AuthPayload> {
+  const [profile, preference] = await Promise.all([
+    db.queryOne<ProfileRecord>('SELECT * FROM profiles WHERE user_id = $1', [user.id]),
+    db.queryOne<PreferenceRecord>('SELECT * FROM preferences WHERE user_id = $1', [user.id]),
+  ]);
+
+  const completion = checkProfileCompletion({
+    firstName: profile?.first_name,
+    dateOfBirth: profile?.date_of_birth,
+    gender: profile?.gender,
+    avatarType: profile?.avatar_type,
+    interestedIn: preference?.interested_in,
+  });
+
+  return {
+    user: { id: user.id, email: user.email, status: user.status },
+    profile,
+    preference,
+    profileComplete: completion.isComplete,
+    missingFields: completion.missingFields,
+  };
+}
+
+export function normalizeEmail(email: string): string {
+  return email.toLowerCase().trim();
+}
+
+export async function findUserByEmail(email: string): Promise<UserRecord | null> {
+  return db.queryOne<UserRecord>(
+    `SELECT ${USER_COLUMNS} FROM users WHERE email = $1`,
+    [normalizeEmail(email)]
+  );
+}
+
+/**
+ * Create a brand new account. Fails if the email is already taken.
+ */
+export async function registerUser(email: string, passwordHash: string): Promise<UserRecord | null> {
+  const created = await db.query<UserRecord>(
+    `INSERT INTO users (email, status, password_hash)
+     VALUES ($1, 'ACTIVE', $2)
+     ON CONFLICT (email) DO NOTHING
+     RETURNING ${USER_COLUMNS}`,
+    [normalizeEmail(email), passwordHash]
   );
 
-  if (!user) {
-    const created = await db.query<UserRecord>(
-      `INSERT INTO users (email, status) 
-       VALUES ($1, 'ACTIVE') 
-       RETURNING id, email, status, created_at, updated_at`,
-      [normalizedEmail]
-    );
-    user = created[0];
+  return created[0] ?? null;
+}
+
+/**
+ * Verify email + password.
+ *
+ * Returns null for every failure mode (unknown email, wrong password, account
+ * without a password, banned account) so callers cannot use it to enumerate
+ * which emails are registered. The not-found path burns equivalent CPU.
+ */
+export async function authenticateUser(
+  email: string,
+  password: string,
+  verify: (password: string, stored: string) => Promise<boolean>
+): Promise<UserRecord | null> {
+  const user = await db.queryOne<UserRecord & { password_hash: string | null }>(
+    `SELECT ${USER_COLUMNS}, password_hash FROM users WHERE email = $1`,
+    [normalizeEmail(email)]
+  );
+
+  if (!user || !user.password_hash) {
+    await fakeVerifyDelay(password);
+    return null;
+  }
+
+  const passwordMatches = await verify(password, user.password_hash);
+  if (!passwordMatches || user.status === 'BANNED') {
+    return null;
   }
 
   return user;
