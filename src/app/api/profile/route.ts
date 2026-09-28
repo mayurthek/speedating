@@ -26,6 +26,7 @@ export async function GET() {
       gender: profile?.gender,
       avatarType: profile?.avatar_type,
       interestedIn: preference?.interested_in,
+      intent: preference?.intent,
     });
 
     return NextResponse.json({
@@ -59,7 +60,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { firstName, dateOfBirth, gender, avatarType, interestedIn, bio, interests } = parsed.data;
+    const { firstName, dateOfBirth, gender, avatarType, interestedIn, intent, bio, interests } = parsed.data;
     const effectiveAvatarType = avatarType || (gender === 'Woman' ? 'Woman' : gender === 'Other' ? 'Other' : 'Man');
 
     // Upsert Profile
@@ -98,18 +99,18 @@ export async function POST(req: Request) {
     if (existingPref) {
       const updated = await db.query<PreferenceRecord>(
         `UPDATE preferences 
-         SET interested_in = $1, updated_at = CURRENT_TIMESTAMP
-         WHERE user_id = $2
+         SET interested_in = $1, intent = $2, updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = $3
          RETURNING *`,
-        [interestedIn, user.id]
+        [interestedIn, intent, user.id]
       );
       preference = updated[0];
     } else {
       const inserted = await db.query<PreferenceRecord>(
-        `INSERT INTO preferences (user_id, interested_in)
-         VALUES ($1, $2)
+        `INSERT INTO preferences (user_id, interested_in, intent)
+         VALUES ($1, $2, $3)
          RETURNING *`,
-        [user.id, interestedIn]
+        [user.id, interestedIn, intent]
       );
       preference = inserted[0];
     }
@@ -120,6 +121,7 @@ export async function POST(req: Request) {
       gender: profile.gender,
       avatarType: profile.avatar_type,
       interestedIn: preference.interested_in,
+      intent: preference.intent,
     });
 
     return NextResponse.json({

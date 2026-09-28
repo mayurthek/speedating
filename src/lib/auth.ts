@@ -114,6 +114,7 @@ export async function getAuthPayload(user: UserRecord): Promise<AuthPayload> {
     gender: profile?.gender,
     avatarType: profile?.avatar_type,
     interestedIn: preference?.interested_in,
+    intent: preference?.intent,
   });
 
   return {

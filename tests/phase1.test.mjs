@@ -29,6 +29,7 @@ test('ProfileSchema enforces 18+ requirement and rejects underage users', () => 
     gender: 'Man',
     avatarType: 'Man',
     interestedIn: 'Everyone',
+    intent: 'Either',
     bio: 'Hello world',
     interests: ['Coffee', 'Books'],
   });
@@ -45,6 +46,7 @@ test('ProfileSchema enforces 18+ requirement and rejects underage users', () => 
     gender: 'Man',
     avatarType: 'Man',
     interestedIn: 'Women',
+    intent: 'Either',
     bio: 'Enjoying life',
     interests: ['Coffee', 'Books', 'Music'],
   });
@@ -62,6 +64,7 @@ test('ProfileSchema limits interests to max 5 and bio to 160 characters', () => 
     gender: 'Woman',
     avatarType: 'Woman',
     interestedIn: 'Men',
+    intent: 'Either',
     bio: 'Short bio',
     interests: ['A', 'B', 'C', 'D', 'E', 'F'], // 6 items
   });
@@ -74,6 +77,7 @@ test('ProfileSchema limits interests to max 5 and bio to 160 characters', () => 
     gender: 'Woman',
     avatarType: 'Woman',
     interestedIn: 'Men',
+    intent: 'Either',
     bio: 'A'.repeat(161),
     interests: ['Coffee'],
   });
@@ -91,10 +95,23 @@ test('checkProfileCompletion accurately detects complete vs incomplete profiles'
     gender: 'Man',
     avatarType: 'Man',
     interestedIn: null,
+    intent: 'Either',
   });
   assert.equal(incomplete.isComplete, false);
   assert.ok(incomplete.missingFields.includes('First name'));
   assert.ok(incomplete.missingFields.includes('Dating preference'));
+
+  // Incomplete: everything filled in except the stated intent
+  const missingIntent = checkProfileCompletion({
+    firstName: 'Taylor',
+    dateOfBirth: adultDob,
+    gender: 'Woman',
+    avatarType: 'Woman',
+    interestedIn: 'Everyone',
+    intent: null,
+  });
+  assert.equal(missingIntent.isComplete, false);
+  assert.ok(missingIntent.missingFields.includes('What you are looking for'));
 
   // Complete with Man / Woman
   const complete = checkProfileCompletion({
@@ -103,6 +120,7 @@ test('checkProfileCompletion accurately detects complete vs incomplete profiles'
     gender: 'Woman',
     avatarType: 'Woman',
     interestedIn: 'Everyone',
+    intent: 'Love',
   });
   assert.equal(complete.isComplete, true);
   assert.equal(complete.missingFields.length, 0);
@@ -114,6 +132,7 @@ test('checkProfileCompletion accurately detects complete vs incomplete profiles'
     gender: 'Other',
     avatarType: null,
     interestedIn: 'Everyone',
+    intent: 'Friendship',
   });
   assert.equal(completeOther.isComplete, true);
   assert.equal(completeOther.missingFields.length, 0);

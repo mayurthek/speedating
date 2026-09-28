@@ -12,6 +12,7 @@ interface ProfileFormProps {
     gender?: 'Man' | 'Woman' | string;
     avatarType?: 'Man' | 'Woman' | 'Other';
     interestedIn?: 'Men' | 'Women' | 'Everyone';
+  intent?: 'Love' | 'Friendship' | 'Either';
     bio?: string;
     interests?: string[];
   };
@@ -43,6 +44,9 @@ export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProp
   );
   const [interestedIn, setInterestedIn] = useState<'Men' | 'Women' | 'Everyone'>(
     initialData?.interestedIn || 'Everyone'
+  );
+  const [intent, setIntent] = useState<'Love' | 'Friendship' | 'Either' | null>(
+    initialData?.intent || null
   );
   const [bio, setBio] = useState(initialData?.bio || '');
   const [interests, setInterests] = useState<string[]>(initialData?.interests || []);
@@ -113,6 +117,7 @@ export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProp
           gender,
           avatarType,
           interestedIn,
+          intent,
           bio,
           interests,
         }),
@@ -290,6 +295,53 @@ export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProp
         </div>
       </div>
 
+      {/* Looking for */}
+      <div>
+        <label className="type-controls" style={{ display: 'block', marginBottom: '8px' }}>
+          What are you looking for? <span style={{ color: 'var(--text-muted)' }}>*</span>
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+          {([
+            { value: 'Love', label: 'Love', hint: 'Romance' },
+            { value: 'Friendship', label: 'Friendship', hint: 'Connection' },
+            { value: 'Either', label: 'Either', hint: 'Open to both' },
+          ] as const).map((option) => {
+            const isSelected = intent === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setIntent(option.value)}
+                aria-pressed={isSelected}
+                className="btn"
+                style={{
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '2px',
+                  backgroundColor: isSelected ? 'var(--action-primary)' : 'var(--surface-primary)',
+                  color: isSelected ? 'var(--action-primary-text)' : 'var(--text-primary)',
+                  borderColor: isSelected ? 'var(--action-primary)' : 'var(--border-subtle)',
+                }}
+              >
+                <span style={{ fontSize: '14px', fontWeight: 600 }}>{option.label}</span>
+                <span
+                  className="type-meta"
+                  style={{
+                    fontSize: '10px',
+                    color: isSelected ? 'var(--action-primary-text)' : 'var(--text-muted)',
+                  }}
+                >
+                  {option.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="type-meta" style={{ marginTop: '8px' }}>
+          You are only matched with people looking for the same thing, unless you pick Either.
+        </p>
+      </div>
+
       {/* Bio / About */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -406,7 +458,7 @@ export function ProfileForm({ initialData, isEditMode = false }: ProfileFormProp
       <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '20px', marginTop: '10px' }}>
         <button
           type="submit"
-          disabled={loading || isUnderAge}
+          disabled={loading || isUnderAge || intent === null}
           className="btn btn-primary"
           style={{ width: '100%', padding: '14px', fontSize: '16px' }}
         >

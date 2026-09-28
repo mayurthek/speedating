@@ -28,6 +28,7 @@ export interface PreferenceRecord {
   id: string;
   user_id: string;
   interested_in: 'Men' | 'Women' | 'Everyone';
+  intent: 'Love' | 'Friendship' | 'Either';
   created_at: string;
   updated_at: string;
 }

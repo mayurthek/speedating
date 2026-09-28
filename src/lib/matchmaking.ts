@@ -1,24 +1,38 @@
 import { db, ProfileRecord, PreferenceRecord, QueueEntryRecord, SessionRecord, UserRecord } from './db';
 import { checkProfileCompletion } from './profile-validation';
 
+export type MatchIntent = 'Love' | 'Friendship' | 'Either';
+
+interface MatchProfile {
+  gender: string;
+  interestedIn: string;
+  intent?: MatchIntent;
+}
+
+/**
+ * Whether one person is willing to be matched with the other.
+ *
+ * Two independent gates: who they want to meet, and what they are looking for.
+ * 'Either' acts as a wildcard on the intent gate, and is assumed when a caller
+ * omits it so older rows and tests keep matching as before.
+ */
+function accepts(seeker: MatchProfile, target: MatchProfile): boolean {
+  const genderOk =
+    seeker.interestedIn === 'Everyone' ||
+    (seeker.interestedIn === 'Men' && target.gender === 'Man') ||
+    (seeker.interestedIn === 'Women' && target.gender === 'Woman');
+
+  const seekerIntent = seeker.intent ?? 'Either';
+  const targetIntent = target.intent ?? 'Either';
+  const intentOk =
+    seekerIntent === 'Either' || targetIntent === 'Either' || seekerIntent === targetIntent;
+
+  return genderOk && intentOk;
+}
+
 // Helper to check mutual compatibility between two users
-export function areCompatible(
-  userA: { gender: string; interestedIn: string },
-  userB: { gender: string; interestedIn: string }
-): boolean {
-  // A accepts B
-  const aAcceptsB =
-    userA.interestedIn === 'Everyone' ||
-    (userA.interestedIn === 'Men' && userB.gender === 'Man') ||
-    (userA.interestedIn === 'Women' && userB.gender === 'Woman');
-
-  // B accepts A
-  const bAcceptsA =
-    userB.interestedIn === 'Everyone' ||
-    (userB.interestedIn === 'Men' && userA.gender === 'Man') ||
-    (userB.interestedIn === 'Women' && userA.gender === 'Woman');
-
-  return aAcceptsB && bAcceptsA;
+export function areCompatible(userA: MatchProfile, userB: MatchProfile): boolean {
+  return accepts(userA, userB) && accepts(userB, userA);
 }
 
 // In-memory mutex to ensure atomic matchmaking transitions and prevent race conditions
@@ -64,6 +78,7 @@ export async function joinQueue(userId: string): Promise<{
     gender: profile?.gender,
     avatarType: profile?.avatar_type,
     interestedIn: preference?.interested_in,
+    intent: preference?.intent,
   });
 
   if (!completion.isComplete) {
@@ -103,9 +118,10 @@ export async function joinQueue(userId: string): Promise<{
       avatar_type: string;
       first_name: string;
       interested_in: string;
+      intent?: string;
       joined_at: string;
     }>(
-      `SELECT q.user_id, p.gender, p.avatar_type, p.first_name, pr.interested_in, q.joined_at
+      `SELECT q.user_id, p.gender, p.avatar_type, p.first_name, pr.interested_in, pr.intent, q.joined_at
        FROM queue_entries q
        JOIN profiles p ON p.user_id = q.user_id
        JOIN preferences pr ON pr.user_id = q.user_id
@@ -121,8 +137,12 @@ export async function joinQueue(userId: string): Promise<{
       // Check mutual compatibility
       if (
         !areCompatible(
-          { gender: profile!.gender, interestedIn: preference!.interested_in },
-          { gender: candidate.gender, interestedIn: candidate.interested_in }
+          { gender: profile!.gender, interestedIn: preference!.interested_in, intent: preference!.intent },
+          {
+            gender: candidate.gender,
+            interestedIn: candidate.interested_in,
+            intent: candidate.intent as MatchIntent | undefined,
+          }
         )
       ) {
         continue;

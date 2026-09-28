@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { db } from '../src/lib/db.ts';
-import { joinQueue } from '../src/lib/matchmaking.ts';
+import { joinQueue, areCompatible } from '../src/lib/matchmaking.ts';
 import { getSessionView, submitDecision, SessionAccessError } from '../src/lib/session-loop.ts';
 
 async function createTestUser(email, gender, interestedIn, firstName = 'User') {
@@ -209,4 +209,90 @@ test('a finished date rejects further votes', async () => {
     SessionAccessError,
     'no voting after the date has ended'
   );
+});
+
+test('intent gates who may be matched', () => {
+  // Same goal on both sides is compatible.
+  assert.equal(
+    areCompatible(
+      { gender: 'Man', interestedIn: 'Everyone', intent: 'Love' },
+      { gender: 'Woman', interestedIn: 'Everyone', intent: 'Love' }
+    ),
+    true
+  );
+  assert.equal(
+    areCompatible(
+      { gender: 'Man', interestedIn: 'Everyone', intent: 'Friendship' },
+      { gender: 'Woman', interestedIn: 'Everyone', intent: 'Friendship' }
+    ),
+    true
+  );
+
+  // Romance seeker versus friendship seeker must not be paired.
+  assert.equal(
+    areCompatible(
+      { gender: 'Man', interestedIn: 'Everyone', intent: 'Love' },
+      { gender: 'Woman', interestedIn: 'Everyone', intent: 'Friendship' }
+    ),
+    false
+  );
+
+  // 'Either' is a wildcard, but only one side needs to be open.
+  assert.equal(
+    areCompatible(
+      { gender: 'Man', interestedIn: 'Everyone', intent: 'Either' },
+      { gender: 'Woman', interestedIn: 'Everyone', intent: 'Love' }
+    ),
+    true
+  );
+
+  // Intent must agree on both sides: one 'Either' alone is not enough.
+  assert.equal(
+    areCompatible(
+      { gender: 'Man', interestedIn: 'Everyone', intent: 'Love' },
+      { gender: 'Woman', interestedIn: 'Everyone', intent: 'Friendship' }
+    ),
+    false
+  );
+
+  // Two people who each want to meet men are mutually compatible, intent aside.
+  assert.equal(
+    areCompatible(
+      { gender: 'Man', interestedIn: 'Men', intent: 'Love' },
+      { gender: 'Man', interestedIn: 'Men', intent: 'Love' }
+    ),
+    true
+  );
+
+  // Intent does not override the existing gender gate: neither wants a man.
+  assert.equal(
+    areCompatible(
+      { gender: 'Man', interestedIn: 'Women', intent: 'Love' },
+      { gender: 'Man', interestedIn: 'Women', intent: 'Love' }
+    ),
+    false
+  );
+
+  // Callers that omit intent keep the previous behaviour.
+  assert.equal(
+    areCompatible({ gender: 'Man', interestedIn: 'Women' }, { gender: 'Woman', interestedIn: 'Men' }),
+    true
+  );
+});
+
+test('people seeking different things are not paired by the queue', async () => {
+  await cleanDatabase();
+  const a = await createTestUser(`intent-a-${Date.now()}@test.local`, 'Man', 'Everyone', 'Ada');
+  const b = await createTestUser(`intent-b-${Date.now()}@test.local`, 'Woman', 'Everyone', 'Bo');
+
+  await db.query(`UPDATE preferences SET intent = 'Love' WHERE user_id = $1`, [a]);
+  await db.query(`UPDATE preferences SET intent = 'Friendship' WHERE user_id = $1`, [b]);
+
+  await joinQueue(a);
+  const joined = await joinQueue(b);
+
+  assert.equal(joined.status, 'WAITING', 'a mismatched intent keeps both people waiting');
+
+  const queue = await db.query('SELECT status FROM queue_entries WHERE status = $1', ['WAITING']);
+  assert.equal(queue.length, 2);
 });

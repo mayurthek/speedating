@@ -36,6 +36,9 @@ export const ProfileSchema = z.object({
   interestedIn: z.enum(['Men', 'Women', 'Everyone'], {
     error: 'Please select who you are interested in meeting',
   }),
+  intent: z.enum(['Love', 'Friendship', 'Either'], {
+    error: 'Please select what you are looking for',
+  }),
   bio: z
     .string()
     .trim()
@@ -62,6 +65,7 @@ export function checkProfileCompletion(data: {
   gender?: string | null;
   avatarType?: string | null;
   interestedIn?: string | null;
+  intent?: string | null;
 }): ProfileCompletionStatus {
   const missingFields: string[] = [];
 
@@ -80,6 +84,9 @@ export function checkProfileCompletion(data: {
   }
   if (!data.interestedIn) {
     missingFields.push('Dating preference');
+  }
+  if (!data.intent) {
+    missingFields.push('What you are looking for');
   }
 
   return {
