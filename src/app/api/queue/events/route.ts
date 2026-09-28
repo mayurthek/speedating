@@ -11,49 +11,70 @@ export async function GET() {
 
   const encoder = new TextEncoder();
 
+  let timer: NodeJS.Timeout | null = null;
+  let isClosed = false;
+
   const stream = new ReadableStream({
     start(controller) {
-      let isClosed = false;
+      const safeClose = () => {
+        if (!isClosed) {
+          isClosed = true;
+          if (timer) clearInterval(timer);
+          try {
+            controller.close();
+          } catch {
+            // Ignore if already closed
+          }
+        }
+      };
+
+      const safeEnqueue = (payload: unknown) => {
+        if (isClosed) return;
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(payload)}\n\n`));
+        } catch {
+          safeClose();
+        }
+      };
 
       // Send immediate initial status
       getQueueStatus(user.id)
         .then((initialStatus) => {
           if (isClosed) return;
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(initialStatus)}\n\n`));
+          safeEnqueue(initialStatus);
 
           if (initialStatus.status === 'MATCHED') {
-            isClosed = true;
-            controller.close();
+            safeClose();
             return;
           }
 
           // Polling interval to stream real-time updates
-          const timer = setInterval(async () => {
+          timer = setInterval(async () => {
             if (isClosed) {
-              clearInterval(timer);
+              if (timer) clearInterval(timer);
               return;
             }
 
             try {
               const currentStatus = await getQueueStatus(user.id);
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(currentStatus)}\n\n`));
+              if (isClosed) return;
+              safeEnqueue(currentStatus);
 
               if (currentStatus.status === 'MATCHED' || currentStatus.status === 'NOT_WAITING') {
-                isClosed = true;
-                clearInterval(timer);
-                controller.close();
+                safeClose();
               }
             } catch {
-              isClosed = true;
-              clearInterval(timer);
-              controller.close();
+              safeClose();
             }
           }, 1200);
         })
         .catch(() => {
-          isClosed = true;
-          controller.close();
+          safeClose();
         });
+    },
+    cancel() {
+      isClosed = true;
+      if (timer) clearInterval(timer);
     },
   });
 
