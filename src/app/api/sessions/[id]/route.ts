@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSessionUser } from '@/lib/auth';
-import { getSessionForUser } from '@/lib/matchmaking';
+import { getSessionView } from '@/lib/session-loop';
+
+// Session state changes constantly (countdown, votes), so never cache it.
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: Request,
@@ -13,13 +16,13 @@ export async function GET(
     }
 
     const { id } = await props.params;
-    const sessionDetails = await getSessionForUser(id, user.id);
+    const view = await getSessionView(id, user.id);
 
-    if (!sessionDetails) {
+    if (!view) {
       return NextResponse.json({ error: 'Session not found or unauthorized' }, { status: 404 });
     }
 
-    return NextResponse.json(sessionDetails);
+    return NextResponse.json(view);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to fetch session';
     return NextResponse.json({ error: message }, { status: 500 });

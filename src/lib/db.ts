@@ -47,6 +47,8 @@ export interface SessionRecord {
   user_b: string;
   question_id: string | null;
   status: 'MATCHED' | 'CONNECTING' | 'ACTIVE' | 'ENDING' | 'COMPLETED' | 'CANCELLED';
+  round: number;
+  decision_deadline: string | null;
   started_at: string;
   ends_at: string | null;
   created_at: string;

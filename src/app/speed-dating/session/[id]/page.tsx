@@ -123,6 +123,7 @@ export default function SessionRoomPage() {
   const [micOn, setMicOn] = useState(true);
   const [camOn, setCamOn] = useState(true);
   const [deciding, setDeciding] = useState(false);
+  const [awaitingPartner, setAwaitingPartner] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [reported, setReported] = useState(false);
 
@@ -200,23 +201,62 @@ export default function SessionRoomPage() {
   const leave = () => router.push('/speed-dating/waiting');
 
   /**
-   * The decision endpoint is being built by the backend workstream. If it is
-   * absent we still move the user along, so the control is never a dead end.
+   * Cast a vote for the current round.
+   *
+   * The server owns the outcome: two people both have to choose "keep talking"
+   * for another round to begin. Navigating away unconditionally would throw that
+   * away, so we follow the response instead — a completed date exits, a new round
+   * resets the clock, and an undecided partner holds us in place.
    */
   const sendDecision = async (decision: 'KEEP' | 'MOVE_ON') => {
     if (deciding) return;
     setDeciding(true);
     try {
-      await fetch(`/api/sessions/${sessionId}/decision`, {
+      const res = await fetch(`/api/sessions/${sessionId}/decision`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ decision }),
       });
+
+      const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+
+      if (!res.ok || !data) {
+        // A network or server failure must never trap the user in the room.
+        leave();
+        return;
+      }
+
+      const status = pickString(data.status)?.toUpperCase() ?? '';
+      const endsAtMs = toMs(data.endsAt);
+      const q = data.question as Record<string, unknown> | string | undefined;
+      const questionText =
+        typeof q === 'string' ? q : pickString(q?.text, q?.prompt, q?.body);
+
+      if (status === 'COMPLETED' || status === 'CANCELLED') {
+        leave();
+        return;
+      }
+
+      // Both chose to stay: the server opened a fresh round with a new question.
+      if (status === 'ACTIVE' && endsAtMs !== null) {
+        setAwaitingPartner(false);
+        setSession((prev) =>
+          prev
+            ? { ...prev, status, endsAtMs, question: questionText ?? prev.question, youDecided: false }
+            : prev
+        );
+        setDeadlineMs(endsAtMs);
+        setRemaining(endsAtMs - Date.now());
+        return;
+      }
+
+      // Our vote is recorded; the date now depends on the other person.
+      setAwaitingPartner(true);
+      setSession((prev) => (prev ? { ...prev, youDecided: true } : prev));
     } catch {
-      // A network failure must not trap the user in the room.
+      leave();
     } finally {
       setDeciding(false);
-      leave();
     }
   };
 
@@ -485,6 +525,39 @@ export default function SessionRoomPage() {
                   Move on
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Waiting on the other person to make the same choice */}
+        {awaitingPartner && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: 'rgba(0,0,0,0.72)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: 20,
+              zIndex: 20,
+            }}
+          >
+            <div
+              className="panel"
+              style={{ maxWidth: 380, textAlign: 'center', padding: 26 }}
+              role="status"
+            >
+              <div className="spinner spinner--dark" style={{ margin: '0 auto 14px' }} />
+              <h2 className="type-heading" style={{ fontSize: 21, marginBottom: 8 }}>
+                Waiting for {partner?.firstName}
+              </h2>
+              <p className="type-body" style={{ fontSize: 14, marginBottom: 20 }}>
+                You chose to keep talking. This date continues if they do too.
+              </p>
+              <button className="btn btn-outline btn-block" onClick={leave}>
+                Back to matching
+              </button>
             </div>
           </div>
         )}
