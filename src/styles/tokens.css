@@ -543,8 +543,9 @@ a {
 .room__stage {
   position: relative;
   flex: 1;
-  min-height: 340px;
+  min-height: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -552,13 +553,20 @@ a {
   overflow: hidden;
 }
 
+/* Both people get an equally-sized tile, side by side. */
+.room__tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 1240px;
+}
+
 .room__tile {
   position: relative;
   width: 100%;
-  max-width: 860px;
   aspect-ratio: 16 / 9;
-  max-height: min(62vh, calc(100vh - 320px));
-  min-height: 200px;
+  max-height: min(42vh, 360px);
   border-radius: var(--radius-lg);
   background-color: #2E3138;
   display: flex;
@@ -568,21 +576,20 @@ a {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
-.room__pip {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  width: clamp(110px, 20%, 190px);
-  aspect-ratio: 16 / 9;
-  border-radius: var(--radius-md);
-  background-color: #3A3D45;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  z-index: 2;
+/* Your own tile sits a shade lighter so the two read as distinct people. */
+.room__tile--self {
+  background-color: #34373F;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+}
+
+@media (max-width: 760px) {
+  .room__tiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .room__tile {
+    max-height: min(30vh, 240px);
+  }
 }
 
 .room__nameplate {
@@ -591,12 +598,12 @@ a {
   bottom: 16px;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 13px;
+  gap: 7px;
+  padding: 5px 11px;
   border-radius: var(--radius-pill);
   background-color: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(6px);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
   z-index: 2;
@@ -606,22 +613,23 @@ a {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   color: rgba(255, 255, 255, 0.82);
   text-align: center;
-  padding: 20px;
+  padding: 14px;
 }
 
 .room__state-title {
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
   color: #fff;
 }
 
 .room__state-sub {
-  font-size: 13px;
+  font-size: 12px;
+  line-height: 1.45;
   color: rgba(255, 255, 255, 0.6);
-  max-width: 320px;
+  max-width: 230px;
 }
 
 /* Countdown */

@@ -317,66 +317,81 @@ export default function SessionRoomPage() {
             />
           </div>
 
-          <div className="room__tile">
-            <div className="room__state">
-              {stage === 'connecting' ? (
-                <>
-                  <div className="spinner" />
-                  <div className="room__state-title">Connecting to {partner?.firstName}…</div>
-                  <div className="room__state-sub">
-                    Setting up the call. This only takes a moment.
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Avatar type={partner?.avatarType || 'Other'} size={128} onDark />
-                  <div className="room__state-title">{partner?.firstName}</div>
-                  <div className="room__state-sub">
-                    Video and audio are not connected yet — the call surface is ready for the
-                    media layer.
-                  </div>
-                </>
-              )}
-            </div>
+          <div
+            className={`room__timer${urgent ? ' room__timer--urgent' : ''}`}
+            style={{ position: 'absolute', top: 16, right: 16 }}
+            role="timer"
+            aria-live="off"
+          >
+            {formatClock(remaining)}
+          </div>
 
-            {/* Self view */}
-            <div className="room__pip">
-              {camOn ? (
-                <Avatar type="Other" size={54} onDark />
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path
-                      d="M3 3l18 18M10.7 6H5a2 2 0 00-2 2v8a2 2 0 002 2h11M21 8.5v7a1.5 1.5 0 01-2.4 1.2L14 13.5"
-                      stroke="rgba(255,255,255,0.75)"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>Camera off</span>
-                </div>
-              )}
-            </div>
+          <div className="room__tiles">
+            {/* Partner */}
+            <div className="room__tile">
+              <div className="room__state">
+                {stage === 'connecting' ? (
+                  <>
+                    <div className="spinner" />
+                    <div className="room__state-title">Connecting to {partner?.firstName}…</div>
+                    <div className="room__state-sub">Setting up the call.</div>
+                  </>
+                ) : (
+                  <>
+                    <Avatar type={partner?.avatarType || 'Other'} size={92} onDark />
+                    <div className="room__state-title">{partner?.firstName}</div>
+                    <div className="room__state-sub">Their video will appear here.</div>
+                  </>
+                )}
+              </div>
 
-            {/* Countdown */}
-            <div
-              className={`room__timer${urgent ? ' room__timer--urgent' : ''}`}
-              style={{ position: 'absolute', top: 16, right: 16 }}
-              role="timer"
-              aria-live="off"
-            >
-              {formatClock(remaining)}
-            </div>
-
-            {/* Nameplate */}
-            {stage === 'active' && (
               <div className="room__nameplate">
                 <span className="status-dot" aria-hidden="true" />
                 {partner?.firstName}
+              </div>
+            </div>
+
+            {/* You */}
+            <div className="room__tile room__tile--self">
+              <div className="room__state">
+                {camOn ? (
+                  <>
+                    <Avatar type="Other" size={92} onDark />
+                    <div className="room__state-title">You</div>
+                    <div className="room__state-sub">
+                      {micOn ? 'Camera and mic on' : 'You are muted'}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <svg width="30" height="30" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path
+                        d="M3 3l18 18M10.7 6H5a2 2 0 00-2 2v8a2 2 0 002 2h11M21 8.5v7a1.5 1.5 0 01-2.4 1.2L14 13.5"
+                        stroke="rgba(255,255,255,0.7)"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                    <div className="room__state-title">You</div>
+                    <div className="room__state-sub">Camera off</div>
+                  </>
+                )}
+              </div>
+
+              <div className="room__nameplate">
+                <span className="status-dot" aria-hidden="true" />
+                You
                 {micOn ? null : <span style={{ opacity: 0.65, fontWeight: 400 }}>· muted</span>}
               </div>
-            )}
+            </div>
           </div>
+
+          <p
+            className="room__stage-note"
+            style={{ marginTop: 14, fontSize: 12, color: 'rgba(255,255,255,0.5)' }}
+          >
+            Video and audio are not connected yet — the call surface is ready for the media layer.
+          </p>
         </div>
 
         {/* Shared question */}
